@@ -48,7 +48,7 @@ public:
     void render(Camera2D& cam)
     {
         Vector2 topLeft = GetScreenToWorld2D({0.f, 0.f}, cam);
-        Vector2 bottomRight = {topLeft.x + GetScreenWidth(), topLeft.y + GetScreenHeight()};
+        Vector2 bottomRight = GetScreenToWorld2D({(float)GetScreenWidth() + 1.f, (float)GetScreenHeight() + 1.f}, cam);
 
         Vector2 tileTopLeft = {floor(topLeft.x / m_tileWidth), floor(topLeft.y / m_tileHeight)};
         Vector2 tileBottomRight = {floor(bottomRight.x / m_tileWidth) + 1.f, floor(bottomRight.y / m_tileHeight) + 1.f};

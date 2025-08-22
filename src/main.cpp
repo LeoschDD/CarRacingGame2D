@@ -33,26 +33,20 @@ void render(Car* car, World* world, Camera2D& cam)
     cam.target = car->getPos();
     EndMode2D();
 
+    float boostBarX = GetScreenWidth() * (float)80/100;
+    float boostBarY = GetScreenHeight() * (float)2/100;
+
+    Vector2 boostBarFrameSize = {GetScreenWidth() * (float)18/100, 
+        GetScreenHeight() * (float)5/100};
+    Vector2 boostBarSize = {GetScreenWidth() * car->getBoostLevel() * (float)18/100 * (float)1/100, 
+        GetScreenHeight() * (float)5/100};
+
+    DrawRectangleLines(boostBarX, boostBarY, boostBarFrameSize.x, boostBarFrameSize.y, RED);
+    DrawRectangle(boostBarX, boostBarY, boostBarSize.x, boostBarSize.y, WHITE);
+
     rlImGuiBegin();
 
-    static bool open = true;
-    static ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
-    ImGui::Begin("Car-Info", &open, flags);
-
-    ImGui::SetWindowPos({0, 0});
-    ImGui::SetWindowSize({200, 1080});
-
-    ImGui::Text("Position x: %2.f", car->getPos().x);
-    ImGui::Text("Position y: %2.f", car->getPos().y);
-
-    ImGui::Text("Velocity x: %2.f", car->getVel().x);
-    ImGui::Text("Velocity y: %2.f", car->getVel().y);
-
-    ImGui::Text("Throttle: %2.f", car->getThrottle());
-
-    ImGui::Text("Rotation: %2.f", car->getRotation());
-
-    ImGui::End();
+    car->tuner();
 
     rlImGuiEnd();
 
@@ -91,23 +85,19 @@ int main(int argc, char** argv)
     const float trailTime = 0.03f;
     const size_t maxTrails = 2000;
 
-    const float maxVelocity = 10000.f;
-    const float minVelocity = -500.f;
-
-    const float accelerationSpeed = 1000.f;
+    const float accelerationSpeed = 500.f;
     const float decelerationSpeed = 400.f;
     const float turnSpeed = 10.f;
 
-    const float rollFriction = 0.001f;
-    const float airFriction = 0.001f;
+    const float rollFriction = 0.03f;
+    const float airFriction = 0.03f;
     const float grip = 5.f;
 
     const Vector2 startPos = {mapWidth * tileWidth * 0.5f, mapHeight * tileHeight * 0.5f};
     const Vector2 size = {30.f, 60.f};
 
-    Car car(trailTime, maxTrails, maxVelocity, minVelocity, 
-            accelerationSpeed, decelerationSpeed, turnSpeed, 
-            rollFriction, airFriction, grip, startPos, size, &vehicleTex);
+    Car car(trailTime, maxTrails, accelerationSpeed, decelerationSpeed, 
+            turnSpeed, rollFriction, airFriction, grip, startPos, size, &vehicleTex);
 
     Camera2D cam;
     cam.offset = {(float)screenWidth/2, (float)screenHeight/2};

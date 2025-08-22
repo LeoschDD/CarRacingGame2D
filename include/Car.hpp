@@ -7,9 +7,6 @@ class Car
 private:
     TrailManager m_trails;
 
-    float m_maxVelocity;
-    float m_minVelocity;
-
     float m_accelerationSpeed;
     float m_decelerationSpeed;
     float m_turnSpeed;
@@ -30,6 +27,8 @@ private:
     float m_driftTimer{0};
     bool m_driftBoost{false};
 
+    float m_boostLevel{100.f};
+
     float m_throttle{0};
     float m_steering{0};
 
@@ -45,8 +44,6 @@ public:
     Car(
         float trailTime,
         size_t maxTrails,
-        float maxVelocity, 
-        float minVelocity, 
         float accelerationSpeed, 
         float decelerationSpeed, 
         float turnSpeed, 
@@ -57,8 +54,6 @@ public:
         Vector2 size,
         Texture2D* texture) 
         : m_trails(trailTime, maxTrails)
-        , m_maxVelocity(maxVelocity)
-        , m_minVelocity(minVelocity)
         , m_accelerationSpeed(accelerationSpeed)
         , m_decelerationSpeed(decelerationSpeed)
         , m_turnSpeed(turnSpeed)
@@ -87,7 +82,12 @@ public:
 
         m_handBrake = IsKeyDown(KEY_SPACE);
 
-        if (m_driftBoost) m_throttle *= 1.5f;;
+        if (m_driftBoost) m_throttle *= 1.5f;
+        if (IsKeyDown(KEY_LEFT_SHIFT) && m_boostLevel > 0.f && m_throttle > 0.f) 
+        {
+            m_throttle *= 2.5f;
+            m_boostLevel -= 0.1f;
+        }
     }
 
     void update(const float dt)
@@ -114,10 +114,11 @@ public:
         // calculate rotation with forward speed (if 0 no rotation possible)
 
         float drift = fminf(fabsf(sidewaysSpeed)/fabsf(forwardSpeed) + 1e-3f, 1.f);
-        float driftFactor = 1.f + drift * (m_normalGrip/m_grip - 1.f) * 0.2f;
+        float driftFactor = 1.f + drift * (m_normalGrip/(m_grip + 1e-6f) - 1.f) * 0.2f;
         float speedFactor = forwardSpeed * fmaxf(150.f / (fabsf(forwardSpeed) + 150.f), 0.2f);
 
         m_rotation += m_steering * speedFactor * driftFactor * 0.1f * dt;
+        if (fabsf(m_rotation) > 360.f) m_rotation = 0.f;
 
         // now you can scale the forward and sideways speed, first scale forward down when handbrake activated
 
@@ -148,26 +149,30 @@ public:
 
         m_trails.addTrail(forward, sideways, forwardSpeed, sidewaysSpeed, m_size, m_pos, m_rotation, m_handBrake, dt);
 
-        // get time of drift 
+        // get time of drift and update boost logic
 
         m_driftBoost = false;
 
-        if (drift >= 0.5f) 
+        if (drift >= 0.5f && forwardSpeed > 5.f && sidewaysSpeed > 5.f) 
         {
             m_driftTimer += dt;
             m_driftBoost = true;
         }
         else if (m_driftTimer > 0)
         {   
-            if (m_driftTimer > 1) std::cout << "Drift: " << std::fixed << std::setprecision(1) << m_driftTimer << " Sekunden!" << std::endl;
+            if (m_driftTimer > 1)
+            {
+                m_boostLevel += 10;
+                if (m_driftTimer > 2) m_boostLevel += 10;
+                if (m_driftTimer > 3) m_boostLevel += 10;
+
+                std::cout << "Drift: " << std::fixed << std::setprecision(1) << m_driftTimer << " Sekunden!" << std::endl;
+            }
             m_driftTimer = 0.f;
         }
 
-        // limit forward speed
-
-        if (forwardSpeed > m_maxVelocity) forwardSpeed = m_maxVelocity;
-        if (forwardSpeed < m_minVelocity) forwardSpeed = m_minVelocity;
-
+        if (m_boostLevel > 100.f) m_boostLevel = 100.f;
+        if (m_boostLevel < 0.f) m_boostLevel = 0.f;
 
         // add forward vector and sideway vector back, to create new velocity and update position
 
@@ -194,6 +199,48 @@ public:
                 WHITE);
         }
     }
+
+    void tuner()
+    {
+        static bool open = true;
+        static ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
+        ImGui::Begin("Car", &open, flags);
+
+        ImGui::SetWindowPos({0, 0});
+        ImGui::SetWindowSize({400, 1080});
+
+        if (ImGui::CollapsingHeader("Car Info"))
+        {
+            ImGui::BeginGroup();
+            ImGui::Text("Position x: %2.f", m_pos.x);
+            ImGui::Text("Position y: %2.f", m_pos.y);
+
+            ImGui::Text("Velocity x: %2.f", m_vel.x);
+            ImGui::Text("Velocity y: %2.f", m_vel.y);
+
+            ImGui::Text("Throttle: %2.f", m_throttle);
+
+            ImGui::Text("Rotation: %2.f", m_rotation);
+            ImGui::Text("Boost: %2.f", m_boostLevel);  
+            ImGui::EndGroup();  
+        }
+        if (ImGui::CollapsingHeader("Car Tuner"))
+        {   
+            ImGui::BeginGroup();
+            ImGui::SliderFloat("Acceleration Speed", &m_accelerationSpeed, 0.1f, 10000.f, "%2.f\n");
+            ImGui::SliderFloat("Deceleration Speed", &m_decelerationSpeed, 0.1f, 10000.f, "%2.f\n");
+            ImGui::SliderFloat("Turn Speed", &m_turnSpeed, 0.01f, 50.f, "%3.f\n");
+            ImGui::SliderFloat("Normal Grip", &m_normalGrip, 0.01f, 50.f, "%3.f\n");
+            ImGui::SliderFloat("Handbrake Grip", &m_handbrakeGrip, 0.01f, 30.f, "%3.f\n");
+            ImGui::InputFloat("Roll Friction", &m_rollFriction, 0.f, 0.f, "%4.f\n");
+            ImGui::InputFloat("Air Friction", &m_airFriction, 0.f, 0.f, "%4.f\n");
+            ImGui::EndGroup();
+        }
+
+        ImGui::End();        
+    }
+
+    const float getBoostLevel() const {return m_boostLevel;}
 
     const float getRotation() const {return m_rotation;}
     const float getThrottle() const {return m_throttle;}
