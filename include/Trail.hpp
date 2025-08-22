@@ -45,12 +45,12 @@ public:
 
         const bool drifting = (fabsf(sidewaysSpeed) > fabsf(forwardSpeed) * 0.5f);
 
-        if (!(drifting || (handBrake && forwardSpeed > 0.0f)) || m_trailCounter > 0.0f) return;
+        if (!(drifting || (handBrake && forwardSpeed != 0.f)) || m_trailCounter > 0.0f) return;
         
         m_trailCounter = m_trailTime;
 
-        const Vector2 fwdP = Vector2Scale(forward,  carSize.y * 0.5f);
-        const Vector2 bwdP = Vector2Scale(forward, -carSize.y * 0.5f);
+        const Vector2 fwdP = Vector2Scale(forward,  carSize.y * 0.8f);
+        const Vector2 bwdP = Vector2Scale(forward, -carSize.y * 0.2f);
         const Vector2 rgtP = Vector2Scale(sideways,  carSize.x * 0.5f);
         const Vector2 lftP = Vector2Scale(sideways, -carSize.x * 0.5f);
 
