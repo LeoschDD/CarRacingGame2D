@@ -10,7 +10,7 @@
 #include <deque>
 
 #include "../include/Car.hpp"
-#include "../include/World.hpp"
+#include "../include/Map.hpp"
 
 void handleInput(const float dt, Car* car)
 {
@@ -22,13 +22,13 @@ void update(const float dt, Car* car)
     car->update(dt);
 }
 
-void render(Car* car, World* world, Camera2D& cam)
+void render(Car* car, Map::TileMap* map, Camera2D& cam)
 {
     BeginDrawing();
     ClearBackground(GRAY);
 
     BeginMode2D(cam);
-    world->render(cam);
+    map->render(cam);
     car->render();
     cam.target = car->getPos();
     EndMode2D();
@@ -74,16 +74,16 @@ int main(int argc, char** argv)
     Image vehicleImg = LoadImage("assets/Spritesheets/spritesheet_vehicles.png");
     Texture2D vehicleTex = LoadTextureFromImage(vehicleImg);
 
-    const uint16_t tileWidth = 64;
-    const uint16_t tileHeight = 64;
+    const int tileWidth = 64;
+    const int tileHeight = 64;
 
-    const size_t mapWidth = 2000;    
-    const size_t mapHeight = 2000;
+    const int mapWidth = 5000;    
+    const int mapHeight = 5000;
 
-    World world(tileWidth, tileHeight, mapWidth, mapHeight);
+    Map::TileMap map(tileWidth, tileHeight, mapWidth, mapHeight);
 
-    const float trailTime = 0.03f;
-    const size_t maxTrails = 2000;
+    const float trailTime = 0.001f;
+    const size_t maxTrails = 100000;
 
     const float accelerationSpeed = 500.f;
     const float decelerationSpeed = 400.f;
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
 
         handleInput(dt, &car);
         update(dt, &car);
-        render(&car, &world, cam);
+        render(&car, &map, cam);
     }
 
     // close game
