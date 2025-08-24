@@ -10,16 +10,31 @@
 #include <deque>
 
 #include "../include/Car.hpp"
-#include "../include/Map.hpp"
+#include "../include/MapManager.hpp"
 
 void handleInput(const float dt, Car* car)
 {
     car->input();
 }
 
-void update(const float dt, Car* car)
+void update(const float dt, Map::TileMap* map, Car* car, Camera2D& cam)
 {
     car->update(dt);
+
+    Vector2 mousePos = GetScreenToWorld2D(GetMousePosition(), cam);
+    int mouseIndex = map->getIndexWorldPos(mousePos);
+
+    if (map->indexValid(mouseIndex))
+    {
+        Map::Tile* tile = map->getTile(mouseIndex);
+        if (tile && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) 
+        {
+            if (tile->type == Map::TileType::NONE) tile->type = Map::TileType::ROAD;
+            else  tile->type = Map::TileType::NONE;
+        }
+    }
+
+    map->update(cam);
 }
 
 void render(Car* car, Map::TileMap* map, Camera2D& cam)
@@ -41,8 +56,8 @@ void render(Car* car, Map::TileMap* map, Camera2D& cam)
     Vector2 boostBarSize = {GetScreenWidth() * car->getBoostLevel() * (float)18/100 * (float)1/100, 
         GetScreenHeight() * (float)5/100};
 
-    DrawRectangleLines(boostBarX, boostBarY, boostBarFrameSize.x, boostBarFrameSize.y, RED);
-    DrawRectangle(boostBarX, boostBarY, boostBarSize.x, boostBarSize.y, WHITE);
+    DrawRectangleLinesEx({boostBarX - 2.f, boostBarY - 2.f, boostBarFrameSize.x + 4.f, boostBarFrameSize.y + 4.f}, 2.f, BLACK);
+    DrawRectangle(boostBarX, boostBarY, boostBarSize.x, boostBarSize.y, SKYBLUE);
 
     rlImGuiBegin();
 
@@ -77,10 +92,10 @@ int main(int argc, char** argv)
     const int tileWidth = 64;
     const int tileHeight = 64;
 
-    const int mapWidth = 5000;    
-    const int mapHeight = 5000;
+    std::string selectedMapPath = "data/map.txt";
 
-    Map::TileMap map(tileWidth, tileHeight, mapWidth, mapHeight);
+    Map::MapManager mapManager;
+    mapManager.loadMap(selectedMapPath, tileWidth, tileHeight);
 
     const float trailTime = 0.001f;
     const size_t maxTrails = 100000;
@@ -93,7 +108,7 @@ int main(int argc, char** argv)
     const float airFriction = 0.03f;
     const float grip = 5.f;
 
-    const Vector2 startPos = {mapWidth * tileWidth * 0.5f, mapHeight * tileHeight * 0.5f};
+    const Vector2 startPos = {mapManager.map()->width() * tileWidth * 0.5f, mapManager.map()->height() * tileHeight * 0.5f};
     const Vector2 size = {30.f, 60.f};
 
     Car car(trailTime, maxTrails, accelerationSpeed, decelerationSpeed, 
@@ -112,12 +127,13 @@ int main(int argc, char** argv)
         const float dt = GetFrameTime();
 
         handleInput(dt, &car);
-        update(dt, &car);
-        render(&car, &map, cam);
+        update(dt, mapManager.map(), &car, cam);
+        render(&car, mapManager.map(), cam);
     }
 
     // close game
 
+    mapManager.saveMap(selectedMapPath);
     rlImGuiShutdown();
     CloseWindow();
 

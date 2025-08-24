@@ -1,7 +1,12 @@
 #pragma once
 
 #include <raylib.h>
+
 #include <vector>
+#include <string>
+#include <memory>
+#include <fstream>
+#include <sstream>
 
 namespace Map
 {   
@@ -16,7 +21,6 @@ namespace Map
         TileType type;
         Vector2 worldPos;
         bool hovered;
-        bool selected;
     };  
 
     class TileMap
@@ -45,7 +49,6 @@ namespace Map
                 tile.worldPos = getWorldPos(i);
                 tile.type = TileType::NONE;
                 tile.hovered = false;
-                tile.selected = false;
                 m_tileMap[i] = tile;
             }
         }
@@ -67,7 +70,6 @@ namespace Map
                 tile.worldPos = getWorldPos(i);
                 tile.type = static_cast<TileType>(tileMap[i]);
                 tile.hovered = false;
-                tile.selected = false;
                 m_tileMap[i] = tile;
             }
         }
@@ -98,10 +100,10 @@ namespace Map
             }
 
             Vector2 mousePos = GetScreenToWorld2D(GetMousePosition(), cam);
-            int mouseTile = getIndexWorldPos(mousePos);
-            if (mouseTile >= 0 && mouseTile < m_mapWidth * m_mapHeight)
+            int mouseIndex = getIndexWorldPos(mousePos);
+            if (indexValid(mouseIndex))
             {
-                m_tileMap[mouseTile].hovered = true;
+                m_tileMap[mouseIndex].hovered = true;
             }
         }
 
@@ -121,12 +123,12 @@ namespace Map
             tileBottomRight.x += 1.f;
             tileBottomRight.y += 1.f;
 
-            for (float x = tileTopLeft.x; x < tileBottomRight.x; ++x)
+            for (float y = tileTopLeft.y; y < tileBottomRight.y; ++y)
             {
-                for (float y = tileTopLeft.y; y < tileBottomRight.y; ++y)
+                for (float x = tileTopLeft.x; x < tileBottomRight.x; ++x)
                 {
+                    if (!tilePosValid({x, y})) continue;
                     int i = getIndexTilePos({x, y});
-                    if (i < 0 || i >= m_mapWidth * m_mapHeight) continue;
 
                     Tile& tile = m_tileMap[i];
 
@@ -153,6 +155,7 @@ namespace Map
 
         int getIndexTilePos(Vector2 tilePos)
         {
+            if (!tilePosValid(tilePos)) return -1;
             return (int)tilePos.y * m_mapWidth + (int)tilePos.x;
         }
 
@@ -184,6 +187,26 @@ namespace Map
         {
             Vector2 tilePos = getTilePos(index);
             return getWorldPos(tilePos);
+        }
+
+        Tile* getTile(int index)
+        {
+            if (index < 0 || index >= m_mapWidth * m_mapHeight) return nullptr;
+            return &m_tileMap[index];
+        }
+
+        int width() {return m_mapWidth;}
+        int height() {return m_mapHeight;}
+
+        bool tilePosValid(Vector2 tilePos) 
+        {
+            return tilePos.x >= 0 && tilePos.x < m_mapWidth &&
+                   tilePos.y >= 0 && tilePos.y < m_mapHeight;
+        }
+
+        bool indexValid(int index) 
+        {
+            return index >= 0 && index < m_mapWidth * m_mapHeight;
         }
     };
 }

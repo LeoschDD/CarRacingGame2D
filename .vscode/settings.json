@@ -70,6 +70,8 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "iostream": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "fstream": "cpp",
+        "strstream": "cpp"
     }
 }
