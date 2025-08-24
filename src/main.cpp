@@ -14,19 +14,19 @@
 
 void handleInput(const float dt, Car* car)
 {
-    car->input();
+    car->input(dt);
 }
 
-void update(const float dt, Map::TileMap* map, Car* car, Camera2D& cam)
+void update(const float dt, Map::MapManager* mapManager, Car* car, Camera2D& cam)
 {
-    car->update(dt);
+    car->update(dt, mapManager);
 
     Vector2 mousePos = GetScreenToWorld2D(GetMousePosition(), cam);
-    int mouseIndex = map->getIndexWorldPos(mousePos);
+    int mouseIndex = mapManager->tileMap()->getIndexWorldPos(mousePos);
 
-    if (map->indexValid(mouseIndex))
+    if (mapManager->tileMap()->indexValid(mouseIndex))
     {
-        Map::Tile* tile = map->getTile(mouseIndex);
+        Map::Tile* tile = mapManager->tileMap()->getTile(mouseIndex);
         if (tile && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) 
         {
             if (tile->type == Map::TileType::NONE) tile->type = Map::TileType::ROAD;
@@ -34,17 +34,17 @@ void update(const float dt, Map::TileMap* map, Car* car, Camera2D& cam)
         }
     }
 
-    map->update(cam);
+    mapManager->tileMap()->update(cam);
 }
 
-void render(Car* car, Map::TileMap* map, Camera2D& cam)
+void render(Car* car, Map::MapManager* mapManager, Camera2D& cam)
 {
     BeginDrawing();
     ClearBackground(GRAY);
 
     BeginMode2D(cam);
-    map->render(cam);
-    car->render();
+    mapManager->tileMap()->render(cam);
+    car->render(mapManager);
     cam.target = car->getPos();
     EndMode2D();
 
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
     const float airFriction = 0.03f;
     const float grip = 5.f;
 
-    const Vector2 startPos = {mapManager.map()->width() * tileWidth * 0.5f, mapManager.map()->height() * tileHeight * 0.5f};
+    const Vector2 startPos = {mapManager.tileMap()->width() * tileWidth * 0.5f, mapManager.tileMap()->height() * tileHeight * 0.5f};
     const Vector2 size = {30.f, 60.f};
 
     Car car(trailTime, maxTrails, accelerationSpeed, decelerationSpeed, 
@@ -127,8 +127,8 @@ int main(int argc, char** argv)
         const float dt = GetFrameTime();
 
         handleInput(dt, &car);
-        update(dt, mapManager.map(), &car, cam);
-        render(&car, mapManager.map(), cam);
+        update(dt, &mapManager, &car, cam);
+        render(&car, &mapManager, cam);
     }
 
     // close game

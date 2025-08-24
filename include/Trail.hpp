@@ -37,6 +37,7 @@ public:
                 float sidewaysSpeed,
                 const Vector2& carSize,
                 const Vector2& carPos,
+                const Vector2& rotationOffset,
                 float rotation,
                 bool handBrake,
                 float dt)
@@ -49,8 +50,8 @@ public:
         
         m_trailCounter = m_trailTime;
 
-        const Vector2 fwdP = Vector2Scale(forward,  carSize.y * 0.8f);
-        const Vector2 bwdP = Vector2Scale(forward, -carSize.y * 0.2f);
+        const Vector2 fwdP = Vector2Scale(forward,  rotationOffset.y);
+        const Vector2 bwdP = Vector2Scale(forward,  rotationOffset.y - carSize.y);
         const Vector2 rgtP = Vector2Scale(sideways,  carSize.x * 0.5f);
         const Vector2 lftP = Vector2Scale(sideways, -carSize.x * 0.5f);
 

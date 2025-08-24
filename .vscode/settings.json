@@ -72,6 +72,12 @@
         "iostream": "cpp",
         "deque": "cpp",
         "fstream": "cpp",
-        "strstream": "cpp"
+        "strstream": "cpp",
+        "execution": "cpp",
+        "mutex": "cpp",
+        "queue": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "typeindex": "cpp"
     }
 }

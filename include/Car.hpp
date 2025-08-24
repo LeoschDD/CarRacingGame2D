@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trail.hpp"
+#include "MapManager.hpp"
 
 class Car
 {
@@ -37,6 +38,9 @@ private:
     Vector2 m_vel{0, 0};
     Vector2 m_pos{0, 0};
     Vector2 m_size{0, 0};
+    Vector2 m_rotationOffset;
+
+    Rectangle m_carAABB{0, 0, 0, 0};
 
     Texture2D* m_texture{nullptr};
 
@@ -64,12 +68,13 @@ public:
         , m_grip(grip)
         , m_pos(startPos)
         , m_size(size)
+        , m_rotationOffset({0.5f * size.x, 0.8f * size.y})
         , m_texture(texture)
     {}
 
     ~Car() = default;
 
-    void input()
+    void input(const float dt)
     {
         m_throttle = 0.f;
         m_steering = 0.f;
@@ -86,11 +91,11 @@ public:
         if (IsKeyDown(KEY_LEFT_SHIFT) && m_boostLevel > 0.f && m_throttle > 0.f) 
         {
             m_throttle *= 2.5f;
-            m_boostLevel -= 0.1f;
+            m_boostLevel -= 30.f * dt;
         }
     }
 
-    void update(const float dt)
+    void update(const float dt, Map::MapManager* mapManager)
     {   
         // calculate rotation from deg in rad and set rotation always in between 0 an 360
 
@@ -147,13 +152,17 @@ public:
 
         // add a trail when drifting
 
-        m_trails.addTrail(forward, sideways, forwardSpeed, sidewaysSpeed, m_size, m_pos, m_rotation, m_handBrake, dt);
+        m_trails.addTrail(forward, sideways, forwardSpeed, sidewaysSpeed, m_size, m_pos, m_rotationOffset, m_rotation, m_handBrake, dt);
+
+        // update car AABB
+
+        m_carAABB = getCarAABB(forward, sideways);
 
         // get time of drift and update boost logic
 
         m_driftBoost = false;
 
-        if (drift >= 0.5f && forwardSpeed > 5.f && sidewaysSpeed > 5.f) 
+        if (drift >= 0.5f && forwardSpeed > 5.f && fabsf(sidewaysSpeed) > 5.f) 
         {
             m_driftTimer += dt;
             m_driftBoost = true;
@@ -183,8 +192,58 @@ public:
         m_pos += Vector2Scale(m_vel, dt);
     }
 
-    void render()
+    void handleCollision(Map::MapManager* mapManager)
     {
+        Map::CollisionMap* colMap = mapManager->collisionMap();
+
+        Vector2 min = colMap->getRectPos({m_carAABB.x, m_carAABB.y});   
+        Vector2 max = colMap->getRectPos({m_carAABB.x + m_carAABB.width, 
+                                          m_carAABB.y + m_carAABB.height});
+
+        int minX = fmaxf(fminf(min.x, colMap->width()), 0.f); 
+        int minY = fmaxf(fminf(min.y, colMap->height()), 0.f);
+        int maxX = fmaxf(fminf(max.x + 1.f, colMap->width()), 0.f); 
+        int maxY = fmaxf(fminf(max.y + 1.f, colMap->height()), 0.f);
+
+        for (int y = minY; y < maxY; ++y)
+        {
+            for (int x = minX; x < maxX; ++x)
+            {
+                int i = colMap->getIndexRectPos({(float)x, (float)y});
+                std::optional<Rectangle> collisionRect = colMap->getRect(i);
+                if (collisionRect.has_value())
+                {
+                    DrawRectangleRec(collisionRect.value(), BLUE);
+
+                    // m_carAABB - collisionRect collision handeln
+                }
+            }
+        }
+    }
+
+    Rectangle getCarAABB(Vector2 forward, Vector2 sideways)
+    {
+        const Vector2 fwdP = Vector2Scale(forward,  m_rotationOffset.y);
+        const Vector2 bwdP = Vector2Scale(forward,  m_rotationOffset.y - m_size.y);
+        const Vector2 rgtP = Vector2Scale(sideways,  m_size.x * 0.5f);
+        const Vector2 lftP = Vector2Scale(sideways, -m_size.x * 0.5f);
+
+        const Vector2 fwdRgt = Vector2Add(fwdP, rgtP);
+        const Vector2 fwdLft = Vector2Add(fwdP, lftP);
+        const Vector2 bwdRgt = Vector2Add(bwdP, rgtP);
+        const Vector2 bwdLft = Vector2Add(bwdP, lftP);
+
+        float topLeftX = fminf(fminf(fwdRgt.x, fwdLft.x), fminf(bwdRgt.x, bwdLft.x)) + m_pos.x;
+        float topLeftY = fminf(fminf(fwdRgt.y, fwdLft.y), fminf(bwdRgt.y, bwdLft.y)) + m_pos.y;
+        float bottomRightX = fmaxf(fmaxf(fwdRgt.x, fwdLft.x), fmaxf(bwdRgt.x, bwdLft.x)) + m_pos.x;
+        float bottomRightY = fmaxf(fmaxf(fwdRgt.y, fwdLft.y), fmaxf(bwdRgt.y, bwdLft.y)) + m_pos.y;
+
+        return {topLeftX, topLeftY, bottomRightX - topLeftX, bottomRightY - topLeftY};
+    }
+
+    void render(Map::MapManager* mapManager)
+    {
+        handleCollision(mapManager);
         for (auto& trail : *m_trails.getTrails())
         {
             DrawRectanglePro(trail.rectangle, {trail.rectangle.width/2, trail.rectangle.height/2}, trail.rotation, {80, 80, 80, 150});
@@ -194,10 +253,11 @@ public:
             DrawTexturePro(*m_texture, 
                 {142.f, 131.f, 71.f, 131.f}, 
                 {m_pos.x, m_pos.y, m_size.x, m_size.y}, 
-                {m_size.x * 0.5f, m_size.y * 0.8f}, 
+                m_rotationOffset, 
                 m_rotation, 
                 WHITE);
         }
+        DrawRectangleLines(m_carAABB.x, m_carAABB.y, m_carAABB.width, m_carAABB.height, RED);
     }
 
     void tuner()
@@ -212,6 +272,7 @@ public:
         if (ImGui::CollapsingHeader("Car Info"))
         {
             ImGui::BeginGroup();
+
             ImGui::Text("Position x: %2.f", m_pos.x);
             ImGui::Text("Position y: %2.f", m_pos.y);
 
@@ -222,18 +283,24 @@ public:
 
             ImGui::Text("Rotation: %2.f", m_rotation);
             ImGui::Text("Boost: %2.f", m_boostLevel);  
+
             ImGui::EndGroup();  
         }
         if (ImGui::CollapsingHeader("Car Tuner"))
         {   
             ImGui::BeginGroup();
+
             ImGui::SliderFloat("Acceleration Speed", &m_accelerationSpeed, 0.1f, 10000.f, "%2.f\n");
             ImGui::SliderFloat("Deceleration Speed", &m_decelerationSpeed, 0.1f, 10000.f, "%2.f\n");
+
             ImGui::SliderFloat("Turn Speed", &m_turnSpeed, 0.01f, 50.f, "%3.f\n");
+
             ImGui::SliderFloat("Normal Grip", &m_normalGrip, 0.01f, 50.f, "%3.f\n");
             ImGui::SliderFloat("Handbrake Grip", &m_handbrakeGrip, 0.01f, 30.f, "%3.f\n");
+
             ImGui::InputFloat("Roll Friction", &m_rollFriction, 0.f, 0.f, "%4.f\n");
             ImGui::InputFloat("Air Friction", &m_airFriction, 0.f, 0.f, "%4.f\n");
+
             ImGui::EndGroup();
         }
 

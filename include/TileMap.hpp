@@ -7,6 +7,8 @@
 #include <memory>
 #include <fstream>
 #include <sstream>
+#include <iostream>
+#include <stdexcept>
 
 namespace Map
 {   
@@ -123,12 +125,12 @@ namespace Map
             tileBottomRight.x += 1.f;
             tileBottomRight.y += 1.f;
 
-            for (float y = tileTopLeft.y; y < tileBottomRight.y; ++y)
+            for (int y = tileTopLeft.y; y < tileBottomRight.y; ++y)
             {
-                for (float x = tileTopLeft.x; x < tileBottomRight.x; ++x)
+                for (int x = tileTopLeft.x; x < tileBottomRight.x; ++x)
                 {
-                    if (!tilePosValid({x, y})) continue;
-                    int i = getIndexTilePos({x, y});
+                    if (!tilePosValid({(float)x, (float)y})) continue;
+                    int i = getIndexTilePos({(float)x, (float)y});
 
                     Tile& tile = m_tileMap[i];
 
@@ -191,12 +193,12 @@ namespace Map
 
         Tile* getTile(int index)
         {
-            if (index < 0 || index >= m_mapWidth * m_mapHeight) return nullptr;
+            if (!indexValid(index)) return nullptr;
             return &m_tileMap[index];
         }
 
-        int width() {return m_mapWidth;}
-        int height() {return m_mapHeight;}
+        int width() const {return m_mapWidth;}
+        int height() const {return m_mapHeight;}
 
         bool tilePosValid(Vector2 tilePos) 
         {
